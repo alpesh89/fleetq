@@ -28,7 +28,7 @@ dependencies = [
 [project.optional-dependencies]
 render = ["playwright>=1.47"]
 ocr = ["pymupdf>=1.24", "pyobjc-framework-Vision>=10; sys_platform == 'darwin'"]
-dev = ["ruff>=0.6"]
+dev = ["ruff==0.17.6"]
 
 [project.urls]
 Homepage = "https://github.com/alpesh89/fleetq"
@@ -51,6 +51,7 @@ fleetq = ["schema.sql", "listing_domains.txt", "dashboard/static/*", "dashboard/
 [tool.ruff]
 line-length = 130
 target-version = "py311"
+extend-exclude = ["*.md"]   # newer ruff versions also format code blocks in Markdown; docs are prose
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP"]
