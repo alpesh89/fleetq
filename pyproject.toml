@@ -1,7 +1,7 @@
 [project]
 name = "fleetq"
 version = "0.1.0"
-description = "Postgres-backed task queue for a small fleet of Macs and Linux boxes: pull-based workers, plug-in task handlers, fleet-wide rate limits, adaptive concurrency, web dashboard."
+description = "Turn the Macs and Linux machines on your private network into one cluster: big jobs split into small tasks that every machine runs in parallel. Postgres is the only service. Crawling, rendering and OCR included; add your own tasks in one Python file."
 readme = "README.md"
 license = "MIT"
 license-files = ["LICENSE"]

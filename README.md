@@ -1,33 +1,54 @@
 # fleetq
 
-**A task queue for a small fleet of machines you already own.** One Postgres database is the
-queue, the result store and the control channel. Every Mac mini and Linux box runs the same
-worker; task kinds are plug-in Python modules. Workers pull, so the fast machines take more and a
-machine that dies simply stops pulling. A dashboard shows the machines, the queue and the results.
+**Turn the computers you already have into one big machine.**
 
-It began as a crawler fleet (site → sitemap → fetch → parse → Markdown, with change detection,
-polite rate limits and bot-wall handling) and grew a general handler system, so the same fleet now
-also OCRs scanned PDFs offline, and can run whatever handler you write next.
+Most offices and home labs have a few Macs, a couple of Linux boxes, maybe an old server, all
+sitting mostly idle. fleetq joins them into a cluster on your own private network. You give it a
+large job, it cuts the job into many small tasks, and every machine takes tasks as fast as it can
+finish them. Ten machines work on the job at once, so it finishes many times faster, and you never
+had to buy one expensive computer to do it.
 
-```
-coordinator: Postgres + dashboard  <-- one connection pool each --  worker on every machine
-                                                                     tags: net, cpu, arm64/x86_64, macos/linux, browser, ocr, ...
-```
+fleetq is just the name. Think of it as "a work queue for the fleet of machines you own".
 
-## Why this and not Celery, RQ, Temporal, ...
+## What it does, in plain words
 
-- **Nothing to run but Postgres.** No broker, no result backend, no control plane. `psql` is your
-  admin tool and `tasks` is a table you can query.
-- **Built for mixed, modest hardware.** Capability tags route work to machines that can do it
-  (a browser, an OCR engine, a GPU). Each worker tunes its own concurrency from its own load and
-  memory, and backs off before the machine becomes unusable for whoever sits at it.
-- **Polite to the outside world by construction.** Fleet-wide token buckets per site and per
-  server address, pacing at enqueue time so ten sites run in parallel instead of in sequence,
-  automatic slow-down on failing sites, challenge pages recognised and never hammered.
-- **Fan-out that survives crashes.** Children are inserted in the same transaction that completes
-  the parent; idempotency keys make duplicates harmless; jobs carry budgets; depth is capped.
-- **One file per task kind.** A handler is a module with `KIND`, `NEEDS` and `async def run(task, ctx)`.
-  Drop it in a directory or publish it as a package with an entry point.
+1. **You install one small program (a worker) on each machine.** Mac or Linux, old or new, it does
+   not matter. The worker knows what its machine can do: has a browser, has an OCR engine, has
+   lots of memory, and so on.
+2. **One machine keeps the list of work.** That list lives in an ordinary Postgres database.
+   There is nothing else to run: no message broker, no control server, no cloud account.
+3. **You submit a job.** Crawl a website and turn it into clean text, read a 500-page scanned PDF,
+   or anything you write a handler for.
+4. **The job splits itself into tasks and the machines pull them.** A fast machine takes more
+   tasks, a slow machine takes fewer, a machine that is switched off takes none. If a machine
+   crashes in the middle of a task, another one picks that task up.
+5. **You watch it on a dashboard** and collect the results as files or through a small HTTP API.
+
+The machines stay usable for the people sitting at them: each worker watches its own CPU and
+memory and backs off before the machine feels slow.
+
+## What comes in the box
+
+- **Website crawling** that is polite by design: it respects robots.txt, keeps every machine
+  together under one request rate per site, notices when a site is struggling and slows down,
+  recognises "are you a robot" pages instead of hammering them, and only re-downloads pages that
+  actually changed. Pages come out as Markdown.
+- **Scanned PDF to text (OCR)** done entirely on your own machines, nothing uploaded anywhere:
+  Apple Vision on Macs, Tesseract on Linux, one page per task so a long document is read in parallel.
+- **Headless browser rendering** for pages that only show their content after JavaScript runs.
+- **A dashboard** showing every machine (CPU, memory, disk, what it is working on), the queue, each
+  job's progress, the documents produced, and buttons to install or update workers over SSH.
+- **A handler system** so you can add your own kind of task in one Python file (see below).
+
+## Why not a cloud service or a bigger computer?
+
+- The hardware is already paid for and already on your desk.
+- Confidential documents and internal data never leave your network.
+- Adding capacity is plugging in another machine and clicking **Install worker**.
+- When nothing is queued, the machines are just normal computers again.
+
+Compared with job queues like Celery or RQ: fleetq needs only Postgres, routes tasks by what each
+machine can do, and comes with the crawling, rendering and OCR pieces ready to use.
 
 ## Quick start (one machine)
 
@@ -55,7 +76,10 @@ Then open the dashboard, drop a scanned PDF on **Scan a PDF (OCR)**, or try a cu
 
 Python 3.11 or newer. Workers run on macOS (Apple silicon or Intel) and Linux.
 
-## Write a handler
+## Add your own kind of task (a handler)
+
+A handler is one Python file. It says what the task is called, what a machine needs to run it, and
+what to do with one task.
 
 ```python
 # my_handlers/shout.py
