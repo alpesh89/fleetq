@@ -1,0 +1,697 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>fleetq</title>
+<style>
+  :root{
+    --bg:#f5f6f8; --card:#ffffff; --text:#111418; --muted:#6b7280; --line:#e5e7eb;
+    --ok:#16a34a; --warn:#d97706; --bad:#dc2626; --accent:#2563eb; --bar:#e5e7eb; --hover:#f0f2f5; --shade:rgba(0,0,0,.35);
+    --accent-soft:#e8effd; --ok-soft:#e6f6ec; --warn-soft:#fdf1e0; --bad-soft:#fde8e8;
+  }
+  @media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+    --bg:#0f1115; --card:#171a21; --text:#e6e8ec; --muted:#9aa3b2; --line:#272b35; --bar:#272b35; --hover:#1d212a; --shade:rgba(0,0,0,.6);
+    --accent-soft:#1b2740; --ok-soft:#14301f; --warn-soft:#3a2a12; --bad-soft:#3a1717;
+  }}
+  :root[data-theme="dark"]{ --bg:#0f1115; --card:#171a21; --text:#e6e8ec; --muted:#9aa3b2; --line:#272b35; --bar:#272b35; --hover:#1d212a; --shade:rgba(0,0,0,.6);
+    --accent-soft:#1b2740; --ok-soft:#14301f; --warn-soft:#3a2a12; --bad-soft:#3a1717; }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font:14px/1.45 -apple-system,BlinkMacSystemFont,"SF Pro Text",Inter,system-ui,sans-serif;padding:16px}
+  header{display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between;max-width:1200px;margin:0 auto 8px}
+  h1{font-size:20px;margin:0;font-weight:650}
+  .sub{color:var(--muted);font-size:13px}
+  button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:8px 14px;font:inherit;cursor:pointer}
+  button:disabled{opacity:.6;cursor:default}
+  button.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}
+  button.ghost.on{background:var(--accent);color:#fff;border-color:var(--accent)}
+  button.sm{padding:5px 10px;font-size:12px;border-radius:7px}
+  button.danger{background:var(--bad)}
+  input,select,textarea{font:inherit;color:var(--text);background:var(--card);border:1px solid var(--line);border-radius:8px;padding:8px 10px;min-width:0}
+  textarea{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+  label.f{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+  nav.views{display:flex;gap:6px;max-width:1200px;margin:0 auto 10px;border-bottom:1px solid var(--line)}
+  nav.views button{background:transparent;color:var(--muted);border:0;border-bottom:2px solid transparent;border-radius:0;padding:8px 12px;font-weight:600}
+  nav.views button.on{color:var(--text);border-bottom-color:var(--accent)}
+  .view{display:none}.view.on{display:block}
+  .totals{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;max-width:1200px;margin:0 auto 10px}
+  .tile{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:8px 12px;display:flex;align-items:baseline;gap:8px;justify-content:space-between}
+  .tile .k{color:var(--muted);font-size:11px;text-transform:uppercase;letter-spacing:.04em}
+  .tile .v{font-size:17px;font-weight:650;font-variant-numeric:tabular-nums}
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(330px,1fr));gap:10px;max-width:1200px;margin:0 auto}
+  .card{position:relative;background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px 14px 10px;display:flex;flex-direction:column;gap:8px;cursor:pointer;
+    transition:transform .15s,box-shadow .15s,border-color .15s}
+  .card:hover{transform:translateY(-2px);box-shadow:0 12px 32px rgba(0,0,0,.09);border-color:var(--accent)}
+  .card.off{opacity:.72}
+  .card .hd{display:flex;gap:12px;align-items:center;justify-content:space-between}
+  .card .pic{width:44px;height:44px;flex:none;display:flex;align-items:center;justify-content:center;border-radius:12px;background:var(--bg)}
+  .card .pic svg{width:38px;height:38px;display:block}
+  .card .ttl{min-width:0;flex:1;display:flex;flex-direction:column;gap:2px}
+  .card .name{font-size:15px;font-weight:700;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+  .card .host{color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .card .cfg{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .card .cfg span+span::before{content:"·";margin:0 6px;color:var(--line)}
+  .card .cfg b{color:var(--text);font-weight:600}
+  .gauges{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+  .g{display:flex;flex-direction:row;align-items:center;gap:7px;min-width:0}
+  .g svg{width:34px;height:34px;display:block;flex:none}
+  .g svg circle{fill:none;stroke-width:4.5;stroke-linecap:round}
+  .g .tx{display:flex;flex-direction:column;min-width:0;line-height:1.25}
+  .g .tx b{font-size:13px;font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .g .tx b small{font-weight:500;color:var(--muted);font-size:11px;margin-left:4px}
+  .g svg .t{stroke:var(--bar)} .g svg .f{stroke:var(--ok);transition:stroke-dasharray .5s} .g svg .f.warn{stroke:var(--warn)} .g svg .f.bad{stroke:var(--bad)}
+  .g .s{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .pill{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--bar);color:var(--muted);white-space:nowrap}
+  .pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.warn{background:var(--warn-soft);color:var(--warn)} .pill.bad{background:var(--bad-soft);color:var(--bad)} .pill.acc{background:var(--accent-soft);color:var(--accent)}
+  .pill i{width:7px;height:7px;border-radius:50%;background:currentColor;display:inline-block}
+  .pill.ok i{box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 25%,transparent)}
+  .card .ft{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;border-top:1px solid var(--line);padding-top:7px;margin-top:auto}
+  .card .os{font-size:12px;color:var(--muted);display:inline-flex;align-items:center;gap:6px}
+  .card .os svg{width:14px;height:14px}
+  .card .err{font-size:12px}
+  .meter{display:flex;flex-direction:column;gap:4px}
+  .meter .lbl{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+  .meter .lbl b{color:var(--text);font-weight:600;font-variant-numeric:tabular-nums}
+  .bar{height:8px;background:var(--bar);border-radius:99px;overflow:hidden}
+  .bar i{display:block;height:100%;border-radius:99px;background:var(--ok);transition:width .4s}
+  .bar i.warn{background:var(--warn)} .bar i.bad{background:var(--bad)} .bar i.acc{background:var(--accent)}
+  .err{color:var(--bad);font-size:13px;word-break:break-word}
+  code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px}
+  pre{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:12px;white-space:pre-wrap;word-break:break-word;background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:10px;max-height:360px;overflow:auto;margin:0}
+  .chip{display:inline-flex;align-items:center;gap:6px;font-size:12px;padding:2px 8px;border-radius:999px;background:var(--accent-soft);color:var(--text);white-space:nowrap}
+  .chip.ok{background:var(--ok-soft)} .chip.warn{background:var(--warn-soft)} .chip.bad{background:var(--bad-soft)} .chip.mute{background:var(--bar);color:var(--muted)}
+  .panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:16px;max-width:1200px;margin:0 auto 14px}
+  .panel h2{margin:0 0 10px;font-size:14px;font-weight:650}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+  .row .grow{flex:1 1 320px}
+  .hint{font-size:12px;color:var(--muted);margin-top:6px}
+  table{width:100%;border-collapse:collapse;font-size:13px;font-variant-numeric:tabular-nums}
+  th{text-align:left;color:var(--muted);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.04em;padding:6px 6px;border-bottom:1px solid var(--line);position:sticky;top:0;background:var(--card)}
+  td{padding:6px 6px;border-bottom:1px solid var(--line);white-space:nowrap}
+  td.n{overflow:hidden;text-overflow:ellipsis;max-width:0;white-space:nowrap} td.r,th.r{text-align:right}
+  tr:hover td{background:var(--hover)}
+  tr.click{cursor:pointer}
+  .mini{height:4px;background:var(--bar);border-radius:99px;margin-top:3px;overflow:hidden}.mini i{display:block;height:100%;background:var(--accent)}
+  .pbar{height:8px;background:var(--bar);border-radius:99px;overflow:hidden;display:flex;min-width:120px}
+  .pbar i{display:block;height:100%} .pbar .d{background:var(--ok)} .pbar .r{background:var(--accent)} .pbar .f{background:var(--bad)}
+  .pbar .c{background:repeating-linear-gradient(135deg,var(--muted) 0 3px,transparent 3px 6px);opacity:.6}
+  .note{font-size:12px;color:var(--muted)}
+  .tabs{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center}
+  .tabs .sp{flex:1} .tabs small{color:var(--muted)}
+  .tabs button{padding:5px 10px;font-size:12px;border-radius:999px}
+  .tablewrap{overflow:auto;max-height:420px}
+
+  /* drawer */
+  #shade{position:fixed;inset:0;background:var(--shade);opacity:0;pointer-events:none;transition:opacity .2s;z-index:10}
+  #drawer{position:fixed;top:0;right:0;bottom:0;width:min(640px,100vw);background:var(--card);border-left:1px solid var(--line);
+    transform:translateX(100%);transition:transform .25s;z-index:11;display:flex;flex-direction:column;box-shadow:-12px 0 40px rgba(0,0,0,.2)}
+  body.open #shade{opacity:1;pointer-events:auto} body.open #drawer{transform:none}
+  .dh{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;padding:16px 20px;border-bottom:1px solid var(--line)}
+  .dh .x{background:transparent;color:var(--muted);font-size:22px;line-height:1;padding:2px 8px;border:0}
+  .db{overflow:auto;padding:16px 20px;display:flex;flex-direction:column;gap:18px;flex:1}
+  .sec h3{margin:0 0 8px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600}
+  .kv{display:grid;grid-template-columns:1fr 1fr;gap:4px 16px;font-size:13px}
+  .kv div{display:flex;justify-content:space-between;gap:8px;min-width:0;border-bottom:1px dashed var(--line);padding:3px 0}
+  .kv div span:first-child{color:var(--muted)} .kv div span:last-child{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-variant-numeric:tabular-nums}
+  .acts{display:flex;gap:8px;flex-wrap:wrap}
+
+  /* modal */
+  #modal{position:fixed;inset:0;display:none;align-items:center;justify-content:center;background:var(--shade);z-index:20;padding:16px}
+  #modal.on{display:flex}
+  .mbox{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:18px;width:min(560px,100%);display:flex;flex-direction:column;gap:12px}
+  .mbox h2{margin:0;font-size:16px}
+  .mbox .grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .checks{display:flex;gap:10px;flex-wrap:wrap;font-size:13px}
+  .checks label{display:flex;gap:4px;align-items:center}
+  @media (max-width:600px){ .mbox .grid2{grid-template-columns:1fr} }
+  .sp{flex:1}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs>
+  <linearGradient id="g-mac" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#f1f2f4"/><stop offset="1" stop-color="#b9bec6"/></linearGradient>
+  <linearGradient id="g-mac-top" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fafbfc"/><stop offset="1" stop-color="#d7dadf"/></linearGradient>
+  <linearGradient id="g-srv" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#4b5160"/><stop offset="1" stop-color="#2a2e37"/></linearGradient>
+  <symbol id="pic-mac" viewBox="0 0 64 64">
+    <ellipse cx="32" cy="50" rx="24" ry="4" fill="rgba(0,0,0,.14)"/>
+    <rect x="8" y="22" width="48" height="26" rx="8" fill="url(#g-mac)" stroke="#9ea4ad" stroke-width=".8"/>
+    <rect x="8" y="20" width="48" height="24" rx="8" fill="url(#g-mac-top)" stroke="#aeb4bc" stroke-width=".8"/>
+    <circle cx="32" cy="32" r="7" fill="none" stroke="#c9cdd3" stroke-width="1.2"/>
+    <circle cx="49" cy="42" r="1.4" fill="#16a34a"/>
+  </symbol>
+  <symbol id="pic-srv" viewBox="0 0 64 64">
+    <ellipse cx="32" cy="56" rx="20" ry="3.5" fill="rgba(0,0,0,.16)"/>
+    <rect x="13" y="8" width="38" height="47" rx="6" fill="url(#g-srv)" stroke="#1f232b" stroke-width=".8"/>
+    <rect x="18" y="14" width="28" height="7" rx="2" fill="#1b1e25"/><rect x="21" y="17" width="12" height="1.5" rx="1" fill="#5c6372"/>
+    <rect x="18" y="24" width="28" height="7" rx="2" fill="#1b1e25"/><rect x="21" y="27" width="12" height="1.5" rx="1" fill="#5c6372"/>
+    <rect x="18" y="34" width="28" height="7" rx="2" fill="#1b1e25"/><rect x="21" y="37" width="12" height="1.5" rx="1" fill="#5c6372"/>
+    <circle cx="40" cy="48" r="3" fill="none" stroke="#e95420" stroke-width="2"/>
+    <circle cx="22" cy="48" r="1.5" fill="#16a34a"/>
+  </symbol>
+  <symbol id="os-mac" viewBox="0 0 16 16"><path d="M11.3 8.5c0-1.3.7-2.2 1.9-2.8-.7-1-1.7-1.5-2.8-1.6-1.1-.1-2.3.7-2.8.7-.5 0-1.5-.6-2.4-.6C3.3 4.2 1.3 5.8 1.3 8.9c0 1 .2 2 .5 2.9.5 1.3 2.1 4.4 3.8 4.3.9 0 1.5-.6 2.6-.6s1.6.6 2.6.6c1.7 0 3.2-2.8 3.6-4.1-2.3-1.1-3.1-2.7-3.1-3.5zM9.5 3.3c.9-1 .8-2 .8-2.3-.8 0-1.8.6-2.3 1.2-.6.7-.9 1.5-.8 2.3.9.1 1.7-.4 2.3-1.2z" fill="currentColor"/></symbol>
+  <symbol id="os-ubu" viewBox="0 0 16 16"><circle cx="8" cy="8" r="4.2" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="8" cy="2.2" r="1.7" fill="currentColor"/><circle cx="3" cy="11" r="1.7" fill="currentColor"/><circle cx="13" cy="11" r="1.7" fill="currentColor"/></symbol>
+</defs></svg>
+<header>
+  <div>
+    <h1>fleetq</h1>
+    <div class="sub" id="meta">connecting…</div>
+  </div>
+  <div class="acts">
+    <button class="ghost" id="addMachine">Add machine</button>
+    <button id="refresh">Refresh now</button>
+  </div>
+</header>
+<nav class="views">
+  <button data-view="machines" class="on">Machines</button>
+  <button data-view="queue">Queue</button>
+</nav>
+
+<section class="view on" id="view-machines">
+  <section class="totals" id="totals"></section>
+  <section class="grid" id="grid"></section>
+</section>
+
+<section class="view" id="view-queue">
+  <div class="panel">
+    <h2>New request</h2>
+    <div class="tabs"><button class="ghost on" data-req="crawl">Crawl a website</button><button class="ghost" data-req="task">Custom task</button><button class="ghost" data-req="ocr">Scan a PDF (OCR)</button></div>
+    <form id="crawlForm" class="row">
+      <label class="f grow">Website URL<input id="cUrl" placeholder="https://example.com" required></label>
+      <label class="f" title="Maximum pages fetched for this site. Sitemap reads and parsing do not count. Empty = default 100; the server caps every crawl at 2000.">Page limit<input id="cLimit" type="number" min="1" max="2000" step="1" value="50" placeholder="default 100" style="width:110px"></label>
+      <label class="f" title="Fleet-wide rate for this one site: all machines together stay under this. 1 to 2 is polite for small sites; 0.5 = one request every 2 seconds. Empty = 2.">Requests / sec<input id="cRps" type="number" min="0.1" step="any" value="2" placeholder="2" style="width:120px"></label>
+      <label class="f" title="Pages fetched more recently than this are skipped without a request. Older pages are re-checked cheaply (server says 'not modified', or identical content) and only re-parsed when they actually changed.">Re-check after<select id="cAge" style="width:130px">
+        <option value="86400">1 day</option><option value="604800" selected>7 days</option><option value="2592000">30 days</option><option value="0">always re-check</option></select></label>
+      <label class="f" title="Ignore stored copies: download and parse every page again."><span>&nbsp;</span><span style="display:flex;align-items:center;gap:6px;height:36px"><input type="checkbox" id="cForce"> Force refresh</span></label>
+      <label class="f">Name (optional)<input id="cName" placeholder="crawl example.com" style="width:180px"></label>
+      <button type="submit" id="cGo">Start crawl</button>
+    </form>
+    <form id="ocrForm" class="row" style="display:none">
+      <label class="f grow">Scanned PDF<input id="oFile" type="file" accept="application/pdf,.pdf" required></label>
+      <label class="f">Name (optional)<input id="oName" placeholder="file name" style="width:200px"></label>
+      <button type="submit" id="oGo">Upload and read</button>
+    </form>
+    <form id="taskForm" class="row" style="display:none">
+      <label class="f">Kind<input id="tKind" list="kindList" placeholder="fetch" required style="width:140px"><datalist id="kindList"></datalist></label>
+      <label class="f grow">Payload (JSON)<textarea id="tPayload" rows="2">{"url": "https://example.com"}</textarea></label>
+      <label class="f">Needs tags<input id="tNeeds" placeholder="net" style="width:120px"></label>
+      <label class="f">Name<input id="tName" style="width:160px"></label>
+      <button type="submit" id="tGo">Queue task</button>
+    </form>
+    <div class="hint" id="reqMsg">Sitemap first; sites without one are crawled by following links from the homepage. JavaScript-built pages are rendered where a browser worker exists. <b>Page limit</b> caps real pages (empty = 100, maximum 2000). Sites behind bot protection show as failed with the vendor named; a site that permanently moved to a new domain is crawled there; one that redirects to a listing, parked or social site is not scraped. <b>Requests / sec</b> is the total for the whole fleet against this one site (empty = 2; use 0.5 for fragile sites, 5+ for large ones).</div>
+  </div>
+  <section class="totals" id="qTotals"></section>
+  <div class="panel">
+    <h2>Requests</h2>
+    <div class="tablewrap" id="jobs"></div>
+  </div>
+</section>
+
+<div id="shade"></div>
+<aside id="drawer" aria-hidden="true">
+  <div class="dh">
+    <div><div class="name" id="dTitle"></div><div class="alias" id="dSub"></div></div>
+    <button class="x" id="dClose" title="Close (Esc)">×</button>
+  </div>
+  <div class="db" id="dBody"></div>
+</aside>
+
+<div id="modal">
+  <div class="mbox">
+    <h2>Add a machine</h2>
+    <div class="grid2">
+      <label class="f">Alias (used for ssh)<input id="mAlias" placeholder="mini5"></label>
+      <label class="f">IP or hostname<input id="mHost" placeholder="192.168.1.60"></label>
+      <label class="f">SSH user<input id="mUser" placeholder="admin"></label>
+      <label class="f">Handlers<div class="checks" id="mKinds"></div></label>
+    </div>
+    <div class="note">Adds a Host entry to <code>~/.ssh/config</code> (key <code>~/.ssh/fleetq</code>, or <code>FLEETQ_SSH_KEY</code>), a line in <code>inventory.txt</code>, and the handler roles in <code>deploy/roles.txt</code>. Then probe to confirm the key is accepted, and install the worker.</div>
+    <div id="mMsg" class="note"></div>
+    <div class="acts" style="justify-content:flex-end">
+      <button class="ghost" id="mCancel">Cancel</button>
+      <button class="ghost" id="mProbe">Probe only</button>
+      <button id="mAdd">Add machine</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const $ = s => document.querySelector(s);
+const GB = b => (b/1073741824).toFixed(b >= 10*1073741824 ? 0 : 1) + ' GB';
+const MB = b => b >= 1073741824 ? (b/1073741824).toFixed(2)+' GB' : Math.round(b/1048576)+' MB';
+const pct = (a,b) => b ? Math.round(a/b*100) : 0;
+const cls = p => p >= 90 ? 'bad' : p >= 75 ? 'warn' : '';
+const esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function uptime(s){ const d=Math.floor(s/86400), h=Math.floor(s%86400/3600), m=Math.floor(s%3600/60);
+  return d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : `${m}m`; }
+function ago(t){ const s=Math.max(0,Math.round(Date.now()/1000-t)); return s<60?`${s}s ago`:s<3600?`${Math.round(s/60)}m ago`:`${Math.round(s/3600)}h ago`; }
+function dur(s){ if(s==null||isNaN(s)) return '—'; s=Math.max(0,Math.round(s)); if(s<60) return s+'s'; const m=Math.floor(s/60), r=s%60; if(m<60) return `${m}m ${r}s`; return `${Math.floor(m/60)}h ${m%60}m`; }
+function when(t){ return t ? new Date(t*1000).toLocaleTimeString() : '—'; }
+/* ---------- API key (only needed when the server runs with --api-key) ---------- */
+const KEY_STORE = 'fleetq_api_key';
+let keyPrompted = false;
+function apiKey(){ try{ return localStorage.getItem(KEY_STORE) || ''; }catch(e){ return ''; } }
+function keyQuery(){ const k = apiKey(); return k ? `?api_key=${encodeURIComponent(k)}` : ''; }
+async function hfetch(url, opts){
+  opts = opts || {}; opts.headers = Object.assign({}, opts.headers || {});
+  if(apiKey()) opts.headers['Authorization'] = 'Bearer ' + apiKey();
+  let r = await fetch(url, opts);
+  if(r.status === 401 && !keyPrompted){
+    keyPrompted = true;
+    const k = prompt('This dashboard requires an API key. Paste it to continue:');
+    if(k && k.trim()){ try{ localStorage.setItem(KEY_STORE, k.trim()); }catch(e){}
+      opts.headers['Authorization'] = 'Bearer ' + k.trim(); r = await fetch(url, opts); if(r.ok) keyPrompted = false; }
+  }
+  return r;
+}
+async function api(url, body){
+  const r = await hfetch(url, body ? {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify(body)} : undefined);
+  const j = await r.json().catch(()=>({error:'bad response'}));
+  if(!r.ok) throw new Error(j.error || r.statusText);
+  return j;
+}
+
+/* ---------- views ---------- */
+let view = location.hash === '#queue' ? 'queue' : 'machines';
+function showView(v){
+  view = v;
+  document.querySelectorAll('nav.views button').forEach(b => b.classList.toggle('on', b.dataset.view === v));
+  document.querySelectorAll('.view').forEach(s => s.classList.toggle('on', s.id === 'view-'+v));
+  history.replaceState(null,'', v === 'machines' ? location.pathname : '#'+v);
+  if(v === 'queue') loadQueue();
+}
+document.querySelectorAll('nav.views button').forEach(b => b.onclick = () => showView(b.dataset.view));
+
+/* ---------- machines ---------- */
+let snapshot = {hosts:[]}, machines = {list:[], coordinator:null, kinds:[]}, queue = null;
+const byAlias = a => snapshot.hosts.find(h => h.alias === a);
+const machineOf = a => machines.list.find(m => m.alias === a);
+function workerFor(h){
+  if(!queue) return null;
+  const hn = h.online ? (h.data.hostname || '') : '';
+  const short = hn.split('.')[0].toLowerCase();
+  const m = machineOf(h.alias);
+  return queue.workers.find(w => {
+    const id = (w.id||'').toLowerCase(), host = (w.host||'').toLowerCase();
+    return (short && (id === short || host.split('.')[0] === short)) || (m && m.hostname && host === m.hostname.toLowerCase());
+  }) || null;
+}
+
+function meter(label, used, total, text, extra){
+  const p = pct(used,total);
+  return `<div class="meter"><div class="lbl"><span>${label}</span><b>${text ?? (GB(used)+' / '+GB(total))}</b></div>
+    <div class="bar"><i class="${extra||cls(p)}" style="width:${p}%"></i></div></div>`;
+}
+
+function workerPill(h){
+  const w = workerFor(h), m = machineOf(h.alias), inst = m && m.install;
+  if(w && w.alive){
+    const hostRes = (w.slots||{})._host || {};
+    const busy = Object.entries(w.slots||{}).filter(([k])=>!k.startsWith('_')).reduce((a,[,v])=>a+(v.inflight||0),0);
+    const code = (w.slots||{})._code, coord = queue && queue.coordinator_code;
+    if(code && coord && code.hash !== coord) return `<span class="pill warn" title="worker code ${esc(code.hash)} differs from coordinator ${esc(coord)}; open the card and run Update worker"><i></i>worker · update needed</span>`;
+    if(hostRes.pressure) return `<span class="pill warn" title="${esc(hostRes.pressure)}"><i></i>worker · holding back</span>`;
+    return `<span class="pill ok"><i></i>worker · ${busy} running</span>`;
+  }
+  if(w) return `<span class="pill bad"><i></i>worker stale</span>`;
+  if(inst && inst.state === 'running') return `<span class="pill acc"><i></i>installing…</span>`;
+  if(inst && inst.state === 'failed') return `<span class="pill bad"><i></i>install failed</span>`;
+  if(inst && inst.state === 'needs-sudo') return `<span class="pill warn" title="Code installed; run the sudo command from the install log once on that machine"><i></i>needs sudo</span>`;
+  return `<span class="pill"><i></i>no worker</span>`;
+}
+
+function gauge(label, p, sub){
+  const C = 2 * Math.PI * 26, has = p != null && !isNaN(p);
+  const v = has ? Math.max(0, Math.min(100, Math.round(p))) : 0;
+  return `<div class="g"><svg viewBox="0 0 64 64"><circle class="t" cx="32" cy="32" r="26"/>
+      <circle class="f ${has?cls(v):''}" cx="32" cy="32" r="26" transform="rotate(-90 32 32)" stroke-dasharray="${(C*v/100).toFixed(1)} ${C.toFixed(1)}" style="${has?'':'opacity:0'}"/></svg>
+    <div class="tx"><b>${has ? v+'%' : '—'}<small>${label}</small></b><span class="s">${sub||'&nbsp;'}</span></div></div>`;
+}
+
+function osLine(d){
+  const mac = (d.platform||'').toLowerCase() === 'macos' || (d.os.name||'').toLowerCase().includes('mac');
+  return `<span class="os"><svg><use href="#${mac?'os-mac':'os-ubu'}"/></svg>${esc(d.os.name||(mac?'macOS':'Linux'))} ${esc(d.os.version||'')}</span>`;
+}
+function isMac(h){ const m = machineOf(h.alias); const d = h.data; return d ? ((d.platform||'').toLowerCase()==='macos' || (d.arch==='arm64' && (d.chip||'').startsWith('Apple'))) : /mac/i.test(h.alias); }
+function pic(h){ return `<div class="pic"><svg><use href="#${isMac(h)?'pic-mac':'pic-srv'}"/></svg></div>`; }
+
+function card(h){
+  if(!h.online){
+    return `<div class="card off" data-alias="${esc(h.alias)}">
+      <div class="hd"><div class="ttl"><div class="name">${esc(h.alias)}<span class="pill bad"><i></i>offline</span></div>
+        <div class="cfg" title="${esc(h.error || 'no response')}">${esc(h.error || 'no response')}</div></div>${pic(h)}</div>
+      <div class="gauges">${gauge('CPU',null)}${gauge('RAM',null)}${gauge('Disk',null)}</div>
+      <div class="ft"><span class="os">${/mac/i.test(h.alias)?'macOS':'Ubuntu'} · unreachable</span>${workerPill(h)}</div></div>`;
+  }
+  const d=h.data, m=d.memory, c=d.cpu, k=d.disk;
+  const memP = pct(m.total - m.available, m.total), cpuP = c.usage_pct, diskP = pct(k.used, k.total);
+  const chip = String(d.chip || d.model || '').replace(/^Intel\(R\)\s*|^Intel\s+Core\s*|\(TM\)|\(R\)|\s+CPU.*$/g, '').trim() || d.model;
+  const coresFull = c.perf_cores||c.eff_cores ? `${c.cores} cores (${c.perf_cores} performance + ${c.eff_cores} efficiency)` : `${c.cores} cores`;
+  return `<div class="card" data-alias="${esc(h.alias)}">
+    <div class="hd">
+      <div class="ttl"><div class="name">${esc(h.alias)}<span class="pill ok"><i></i>online</span></div>
+        <div class="cfg" title="${esc(d.hostname)} · ${esc(d.chip||d.model)} · ${coresFull} · ${GB(m.total)} RAM · ${GB(k.total)} disk"><span><b>${esc(chip)}</b></span><span>${c.cores} cores</span><span>${GB(m.total)}</span><span>${GB(k.total)}</span></div></div>
+      ${pic(h)}</div>
+    <div class="gauges">
+      ${gauge('CPU', cpuP, `load ${c.load[0].toFixed(1)}`)}
+      ${gauge('RAM', memP, `${GB(m.available)} free`)}
+      ${gauge('Disk', diskP, `${GB(k.available)} free`)}
+    </div>
+    <div class="ft">${osLine(d)}${workerPill(h)}</div>
+  </div>`;
+}
+
+function totals(hosts){
+  const on = hosts.filter(h=>h.online);
+  const sum = f => on.reduce((a,h)=>a+f(h.data),0);
+  const workers = queue ? queue.workers.filter(w=>w.alive).length : '—';
+  const tiles = [
+    ['Hosts online', `${on.length} / ${hosts.length}`],
+    ['Workers active', workers],
+    ['Total cores', sum(d=>d.cpu.cores)],
+    ['Total RAM', GB(sum(d=>d.memory.total))],
+    ['RAM available', GB(sum(d=>d.memory.available))],
+    ['Disk free', GB(sum(d=>d.disk.available))],
+  ];
+  $('#totals').innerHTML = tiles.map(([k,v])=>`<div class="tile"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+}
+
+function renderMachines(){
+  const hosts = [...snapshot.hosts].sort((a,b)=> (b.online-a.online) || a.alias.localeCompare(b.alias));
+  totals(hosts);
+  $('#grid').innerHTML = hosts.map(card).join('');
+}
+
+async function load(url='/api/status'){
+  try{
+    const [snap, mach] = await Promise.all([hfetch(url).then(r=>r.json()), hfetch('/api/machines').then(r=>r.json()).catch(()=>null)]);
+    snapshot = snap;
+    if(mach && mach.machines){ machines = {list: mach.machines, coordinator: mach.coordinator, kinds: mach.kinds}; }
+    try{ queue = await api('/api/queue/overview'); }catch(e){ queue = null; }
+    renderMachines();
+    const q = queue ? ` · ${queue.workers.filter(w=>w.alive).length} workers · ${queue.ready} queued · ${queue.running} running` : ' · queue database offline';
+    $('#meta').textContent = (snapshot.updated_at ? `updated ${ago(snapshot.updated_at)} · polling every ${snapshot.interval}s` : 'first poll in progress…') + (machines.coordinator ? ` · coordinator ${machines.coordinator}` : '') + q;
+    if(drawer.kind === 'host' && drawer.alias) renderOverview();
+    if(view === 'queue') renderQueue();
+  }catch(e){ $('#meta').textContent = 'dashboard server unreachable'; }
+}
+$('#refresh').onclick = async () => { const b=$('#refresh'); b.disabled=true; b.textContent='Refreshing…'; await load('/api/refresh'); b.disabled=false; b.textContent='Refresh now'; };
+
+/* ---------- install worker ---------- */
+async function startInstall(alias){
+  try{ await api(`/api/machines/${encodeURIComponent(alias)}/install`, {}); }
+  catch(e){ alert('Install failed to start: '+e.message); return; }
+  await load();
+  openHost(alias); drawer.tab = 'install'; renderInstall();
+}
+$('#grid').addEventListener('click', e => {
+  const b = e.target.closest('[data-act="install"]');
+  if(b){ e.stopPropagation(); startInstall(b.dataset.alias); return; }
+  const c = e.target.closest('.card'); if(c) openHost(c.dataset.alias);
+});
+
+/* ---------- add machine modal ---------- */
+function openModal(){
+  $('#mKinds').innerHTML = (machines.kinds.length?machines.kinds:['sitemap','fetch','parse']).map(k =>
+    `<label><input type="checkbox" value="${k}" ${k!=='render'?'checked':''}> ${k}</label>`).join('');
+  $('#mMsg').textContent = ''; $('#modal').classList.add('on'); $('#mAlias').focus();
+}
+function closeModal(){ $('#modal').classList.remove('on'); }
+$('#addMachine').onclick = openModal; $('#mCancel').onclick = closeModal;
+$('#modal').addEventListener('click', e => { if(e.target.id==='modal') closeModal(); });
+function modalValues(){
+  return { alias: $('#mAlias').value.trim(), hostname: $('#mHost').value.trim(), user: $('#mUser').value.trim(),
+    kinds: [...document.querySelectorAll('#mKinds input:checked')].map(i=>i.value) };
+}
+$('#mProbe').onclick = async () => {
+  const v = modalValues(); if(!v.alias){ $('#mMsg').textContent = 'Alias is required to probe (it must already be in ~/.ssh/config).'; return; }
+  $('#mMsg').textContent = 'probing…';
+  try{ const p = await api(`/api/machines/${encodeURIComponent(v.alias)}/probe`);
+    $('#mMsg').innerHTML = p.ok ? `<span class="chip ok">reachable</span> ${esc(p.os)} ${esc(p.arch)} · ${esc(p.hostname)} · user ${esc(p.user)} · sudo ${esc(p.sudo)}`
+      : `<span class="chip bad">unreachable</span> ${esc(p.error)}${p.hint?`<br>Copy the key first: <code>${esc(p.hint)}</code>`:''}`;
+  }catch(e){ $('#mMsg').textContent = e.message; }
+};
+$('#mAdd').onclick = async () => {
+  const v = modalValues();
+  if(!v.alias || !v.hostname || !v.user){ $('#mMsg').textContent = 'Alias, host and user are required.'; return; }
+  $('#mMsg').textContent = 'adding…';
+  try{
+    await api('/api/machines', v);
+    const p = await api(`/api/machines/${encodeURIComponent(v.alias)}/probe`);
+    if(p.ok){ $('#mMsg').innerHTML = `<span class="chip ok">added and reachable</span> starting worker install…`;
+      await api(`/api/machines/${encodeURIComponent(v.alias)}/install`, {}); closeModal(); await load(); openHost(v.alias); drawer.tab='install'; renderInstall(); }
+    else { $('#mMsg').innerHTML = `<span class="chip warn">added, but ssh failed</span> ${esc(p.error)}<br>${p.hint?`Run once from this Mac: <code>${esc(p.hint)}</code>, then use Install worker on the card.`:''}`; await load(); }
+  }catch(e){ $('#mMsg').textContent = e.message; }
+};
+
+/* ---------- queue view ---------- */
+function progressBar(j){
+  const t = Math.max(1, j.total || j.task_count || 1);
+  return `<div class="pbar" title="${j.done} done · ${j.running||0} running · ${j.failed||0} failed · ${j.cancelled||0} cancelled of ${t}"><i class="d" style="width:${pct(j.done,t)}%"></i><i class="r" style="width:${pct(j.running,t)}%"></i><i class="f" style="width:${pct(j.failed,t)}%"></i><i class="c" style="width:${pct(j.cancelled||0,t)}%"></i></div>`;
+}
+function jobState(j){
+  if(!j.total) return ['empty','chip mute'];
+  if(j.pending > 0) return j.running > 0 ? ['running','chip'] : ['queued','chip mute'];
+  if(j.cancelled > 0) return [j.done > 0 ? `cancelled after ${j.done} done` : 'cancelled','chip warn'];
+  if(j.failed > 0 && j.done === 0) return ['failed','chip bad'];
+  return j.failed > 0 ? ['done, some failed','chip warn'] : ['done','chip ok'];
+}
+function elapsed(j){ if(!j.total) return '—'; const end = j.finished_at || Date.now()/1000; return dur(end - j.created_at); }
+
+function renderQueue(){
+  if(!queue){ $('#jobs').innerHTML = `<div class="err">Queue database is not reachable. Check <code>FLEETQ_DSN</code> (or <code>FLEETQ_COORDINATOR</code>) and that Postgres is running.</div>`; $('#qTotals').innerHTML=''; return; }
+  const pm = queue.per_minute.reduce((a,r)=>a+r.n,0);
+  const tiles = [['Queued', queue.ready], ['Running', queue.running], ['Done / last minute', pm], ['Workers active', queue.workers.filter(w=>w.alive).length],
+    ['Holding back', queue.workers.filter(w=>w.alive && ((w.slots||{})._host||{}).pressure).length]];
+  $('#qTotals').innerHTML = tiles.map(([k,v])=>`<div class="tile"><div class="k">${k}</div><div class="v">${v}</div></div>`).join('');
+  $('#kindList').innerHTML = [...new Set(queue.workers.flatMap(w=>w.kinds||[]))].map(k=>`<option value="${k}">`).join('');
+  const rows = queue.jobs.map(j => { const [st, cc] = jobState(j); return `<tr class="click" data-job="${j.id}">
+      <td class="r">${j.id}</td><td class="n" title="${esc(j.name)}">${esc(j.name)}</td>
+      <td>${progressBar(j)}</td>
+      <td class="r">${j.done}/${j.total}</td><td class="r" title="${j.pages} pages: ${j.pages - j.skipped} fetched (${j.new_pages} new, ${j.changed} changed), ${j.skipped} unchanged">${j.pages - j.skipped}${j.skipped?`<span class="note"> +${j.skipped} unchanged</span>`:''}</td><td class="r">${j.documents}</td>
+      <td class="r">${j.failed||''}</td>
+      <td><span class="${cc}">${st}</span></td>
+      <td class="r" title="created ${when(j.created_at)}">${elapsed(j)}</td>
+      <td class="r">${ago(j.created_at)}</td></tr>`; }).join('');
+  $('#jobs').innerHTML = queue.jobs.length ? `<table><thead><tr><th class="r">#</th><th>Request</th><th>Progress</th><th class="r">Tasks</th><th class="r">Pages</th><th class="r">Docs</th><th class="r">Failed</th><th>State</th><th class="r">Elapsed</th><th class="r">Created</th></tr></thead><tbody>${rows}</tbody></table>`
+    : `<div class="note">No requests yet. Start a crawl above.</div>`;
+}
+async function loadQueue(){ try{ queue = await api('/api/queue/overview'); }catch(e){ queue=null; } renderQueue(); }
+$('#jobs').addEventListener('click', e => { const r = e.target.closest('tr[data-job]'); if(r) openJob(+r.dataset.job); });
+
+document.querySelectorAll('[data-req]').forEach(b => b.onclick = () => {
+  document.querySelectorAll('[data-req]').forEach(x=>x.classList.toggle('on', x===b));
+  $('#crawlForm').style.display = b.dataset.req==='crawl' ? '' : 'none';
+  $('#taskForm').style.display = b.dataset.req==='task' ? '' : 'none';
+  $('#ocrForm').style.display = b.dataset.req==='ocr' ? '' : 'none';
+  if(b.dataset.req==='ocr') $('#reqMsg').innerHTML = 'The PDF stays on this network: pages are read by Apple Vision on macOS workers and Tesseract on Linux workers, nothing leaves the LAN. Best results from scans at 300 DPI or more, printed English. When the request finishes, open it and use <b>Download text</b>; each page is also listed under Documents with its word count.';
+});
+$('#ocrForm').onsubmit = async e => {
+  e.preventDefault(); const f = $('#oFile').files[0]; if(!f) return; const b=$('#oGo'); b.disabled=true; b.textContent='Uploading…';
+  try{
+    const name = ($('#oName').value || f.name).trim();
+    const r = await hfetch(`/api/queue/ocr?name=${encodeURIComponent(name)}`, {method:'POST', headers:{'Content-Type':'application/pdf', 'X-File-Name': encodeURIComponent(name)}, body: f});
+    const j = await r.json().catch(()=>({error:'bad response'})); if(!r.ok) throw new Error(j.error || r.statusText);
+    $('#reqMsg').innerHTML = `<span class="chip ok">request #${j.job_id} queued · ${MB(j.bytes)}</span>`; $('#oFile').value=''; $('#oName').value=''; await loadQueue(); openJob(j.job_id);
+  }catch(err){ $('#reqMsg').innerHTML = `<span class="chip bad">${esc(err.message)}</span>`; }
+  b.disabled=false; b.textContent='Upload and read';
+};
+$('#crawlForm').onsubmit = async e => {
+  e.preventDefault(); const b=$('#cGo'); b.disabled=true;
+  try{ const r = await api('/api/queue/crawl', {url: $('#cUrl').value, limit: $('#cLimit').value, rps: $('#cRps').value, name: $('#cName').value,
+      max_age_s: $('#cAge').value, force: $('#cForce').checked});
+    $('#reqMsg').innerHTML = `<span class="chip ok">request #${r.job_id} queued</span>`; $('#cUrl').value=''; await loadQueue(); openJob(r.job_id);
+  }catch(err){ $('#reqMsg').innerHTML = `<span class="chip bad">${esc(err.message)}</span>`; }
+  b.disabled=false;
+};
+$('#taskForm').onsubmit = async e => {
+  e.preventDefault(); const b=$('#tGo'); b.disabled=true;
+  try{ JSON.parse($('#tPayload').value || '{}');
+    const r = await api('/api/queue/submit', {kind: $('#tKind').value, payload: $('#tPayload').value, needs: $('#tNeeds').value, name: $('#tName').value});
+    $('#reqMsg').innerHTML = `<span class="chip ok">task #${r.task_id} queued as request #${r.job_id}</span>`; await loadQueue(); openJob(r.job_id);
+  }catch(err){ $('#reqMsg').innerHTML = `<span class="chip bad">${esc(err.message)}</span>`; }
+  b.disabled=false;
+};
+
+/* ---------- drawer (host or job) ---------- */
+const drawer = {kind:null, alias:null, job:null, tab:'grouped', procs:null, timer:null, loading:false, jobData:null, docs:null, docOpen:null, tasks:null, taskTab:'errors'};
+function kv(rows){ return `<div class="kv">${rows.map(([k,v])=>`<div><span>${k}</span><span title="${esc(v)}">${esc(v)}</span></div>`).join('')}</div>`; }
+function sec(id){ let s = document.getElementById(id); if(!s){ s=document.createElement('div'); s.id=id; s.className='sec'; $('#dBody').append(s); } return s; }
+function openDrawerShell(){ document.body.classList.add('open'); $('#drawer').setAttribute('aria-hidden','false'); }
+function closeDrawer(){
+  drawer.kind=null; drawer.alias=null; drawer.job=null; clearInterval(drawer.timer);
+  document.body.classList.remove('open'); $('#drawer').setAttribute('aria-hidden','true');
+  history.replaceState(null,'', view==='queue' ? '#queue' : location.pathname);
+}
+$('#shade').onclick = closeDrawer; $('#dClose').onclick = closeDrawer;
+document.addEventListener('keydown', e => { if(e.key==='Escape'){ closeDrawer(); closeModal(); } });
+
+/* host drawer */
+function renderOverview(){
+  const h = byAlias(drawer.alias); if(!h) return;
+  $('#dTitle').innerHTML = `<span class="dot" style="background:${h.online?'var(--ok)':'var(--bad)'}"></span>${esc(h.online? h.data.hostname : h.alias)}`;
+  const ov = sec('ov'); $('#dBody').prepend(ov);
+  const w = workerFor(h), hostRes = w ? ((w.slots||{})._host||{}) : {};
+  const wrows = w ? [['Worker', w.alive?'active':'stale'], ['Tags', (w.tags||[]).join(', ')], ['Kinds', (w.kinds||[]).join(', ')],
+      ['Slots', Object.entries(w.slots||{}).filter(([k])=>!k.startsWith('_')).map(([k,v])=>`${k} ${v.inflight}/${v.cur}`).join(' · ')],
+      ['Pressure', hostRes.pressure || 'none'], ['Last seen', ago(w.last_seen)],
+      ['Code', (()=>{ const c=(w.slots||{})._code, k=queue&&queue.coordinator_code; if(!c) return 'not reported (old worker)'; return c.hash + (k ? (c.hash===k ? ' · matches coordinator' : ` · coordinator has ${k} — update needed`) : '') + (c.python?` · python ${c.python}`:''); })()]] : [['Worker', 'not installed or not running']];
+  if(!h.online){ $('#dSub').textContent = h.alias+' · offline'; ov.innerHTML = `<div class="err">${esc(h.error||'no response')}</div><h3 style="margin-top:12px">Worker</h3>${kv(wrows)}`; return; }
+  const d=h.data, m=d.memory, c=d.cpu, k=d.disk;
+  $('#dSub').textContent = `${h.alias} · ${d.user}@${d.ip} · ${d.os.name} ${d.os.version}`;
+  ov.innerHTML = `
+    ${meter('Memory in use', m.total-m.available, m.total, `${GB(m.total-m.available)} of ${GB(m.total)} · ${GB(m.available)} available`)}
+    <div style="height:8px"></div>
+    <h3>Worker</h3>${kv(wrows)}
+    <div style="height:12px"></div>
+    <h3>Machine</h3>
+    ${kv([['Model',d.model],['Chip',d.chip],['Architecture',d.arch],['Cores', c.perf_cores||c.eff_cores? `${c.cores} (${c.perf_cores}P + ${c.eff_cores}E)`:c.cores],
+          ['OS',`${d.os.name} ${d.os.version}`],['Kernel / build',d.os.kernel||d.os.build],['Serial',d.serial||'—'],['Uptime',uptime(d.uptime_s)]])}
+    <div style="height:12px"></div>
+    <h3>Memory breakdown</h3>
+    ${kv([['Total',GB(m.total)],['Available',GB(m.available)],['Used (active+wired)',GB(m.used)],['Free',GB(m.free)],['Inactive / cache',GB(m.inactive)],
+          ['Swap used',`${(m.swap_used_mb/1024).toFixed(1)} / ${(m.swap_total_mb/1024).toFixed(1)} GB`],
+          ['CPU usage',`${c.usage_pct}%`],['Load 1 · 5 · 15',c.load.map(x=>x.toFixed(2)).join(' · ')],
+          ['Disk used',`${GB(k.used)} of ${GB(k.total)}`],['Disk free',GB(k.available)]])}`;
+}
+async function renderInstall(){
+  const s = sec('inst');
+  let st; try{ st = await api(`/api/machines/${encodeURIComponent(drawer.alias)}/install`); }catch(e){ st = {state:'unknown', log:e.message}; }
+  const chip = st.state==='running' ? 'chip' : st.state==='ok' ? 'chip ok' : st.state==='failed' ? 'chip bad' : st.state==='needs-sudo' ? 'chip warn' : 'chip mute';
+  const t = st.started ? (st.finished ? `took ${dur(st.finished-st.started)}` : `running ${dur(Date.now()/1000-st.started)}`) : '';
+  s.innerHTML = `<h3>Worker install</h3><div class="tabs"><span class="${chip}">${esc(st.state)}</span><small>${t}${st.coordinator?` · coordinator ${esc(st.coordinator)}`:''}</small><span class="sp"></span>
+      <button class="ghost sm" id="instGo" ${st.state==='running'?'disabled':''}>${st.state==='running'?'Installing…':'Run install'}</button></div>
+    ${st.log ? `<pre>${esc(st.log)}</pre>` : `<div class="note">Not installed from this dashboard yet.</div>`}`;
+  $('#instGo').onclick = () => startInstall(drawer.alias);
+  if(st.state === 'running') setTimeout(() => { if(drawer.kind==='host' && drawer.alias) renderInstall(); }, 2000);
+}
+function renderProcs(){
+  const s = sec('pr'); const p = drawer.procs;
+  const tabs = `<div class="tabs">
+      <button class="ghost ${drawer.tab==='grouped'?'on':''}" data-tab="grouped">By app</button>
+      <button class="ghost ${drawer.tab==='by_memory'?'on':''}" data-tab="by_memory">By memory</button>
+      <button class="ghost ${drawer.tab==='by_cpu'?'on':''}" data-tab="by_cpu">By CPU</button>
+      <span class="sp"></span><small>${p && p.ok ? `${p.count} processes · RSS total ${GB(p.total_rss)}` : (drawer.loading?'loading…':'')}</small></div>`;
+  let body = '';
+  if(!p) body = `<div class="note">Loading processes…</div>`;
+  else if(!p.ok) body = `<div class="err">${esc(p.error||'failed')}</div>`;
+  else {
+    const h = byAlias(drawer.alias); const total = h?.data?.memory?.total || 1;
+    const rows = p[drawer.tab]; const maxRss = Math.max(1, ...rows.map(r=>r.rss));
+    if(drawer.tab==='grouped'){
+      body = `<table><thead><tr><th>Application</th><th class="r">Procs</th><th class="r">Memory</th><th class="r">% RAM</th><th class="r">CPU %</th></tr></thead><tbody>` +
+        rows.map(r=>`<tr><td class="n" title="${esc(r.name)} · ${esc(r.users.join(', '))}">${esc(r.name)}<div class="mini"><i style="width:${pct(r.rss,maxRss)}%"></i></div></td>
+          <td class="r">${r.count}</td><td class="r">${MB(r.rss)}</td><td class="r">${(r.rss/total*100).toFixed(1)}</td><td class="r">${r.cpu.toFixed(1)}</td></tr>`).join('') + `</tbody></table>`;
+    } else {
+      body = `<table><thead><tr><th>Process</th><th class="r">PID</th><th>User</th><th class="r">Memory</th><th class="r">CPU %</th></tr></thead><tbody>` +
+        rows.map(r=>`<tr><td class="n" title="${esc(r.cmd)}">${esc(r.name)}<div class="mini"><i style="width:${pct(r.rss,maxRss)}%"></i></div></td>
+          <td class="r">${r.pid}</td><td>${esc(r.user)}</td><td class="r">${MB(r.rss)}</td><td class="r">${r.cpu.toFixed(1)}</td></tr>`).join('') + `</tbody></table>`;
+    }
+  }
+  s.innerHTML = `<h3>Top processes</h3>${tabs}${body}`;
+  s.querySelectorAll('[data-tab]').forEach(b => b.onclick = () => { drawer.tab = b.dataset.tab; renderProcs(); });
+}
+async function fetchProcs(){
+  if(drawer.kind!=='host' || !drawer.alias || drawer.loading) return;
+  drawer.loading = true; renderProcs();
+  try{ const r = await hfetch(`/api/host/${encodeURIComponent(drawer.alias)}/processes?limit=60`); drawer.procs = await r.json(); }
+  catch(e){ drawer.procs = {ok:false, error:'request failed'}; }
+  drawer.loading = false; if(drawer.kind==='host') renderProcs();
+}
+function openHost(alias){
+  clearInterval(drawer.timer);
+  drawer.kind='host'; drawer.alias = alias; drawer.procs = null; drawer.tab='grouped';
+  $('#dBody').innerHTML = '';
+  renderOverview(); renderInstall(); renderProcs();
+  openDrawerShell();
+  history.replaceState(null,'',`?host=${encodeURIComponent(alias)}`);
+  const h = byAlias(alias);
+  if(h && h.online){ fetchProcs(); drawer.timer = setInterval(fetchProcs, 10000); }
+}
+
+/* job drawer */
+async function openJob(id){
+  clearInterval(drawer.timer);
+  drawer.kind='job'; drawer.job=id; drawer.jobData=null; drawer.docs=null; drawer.docOpen=null; drawer.taskTab='errors';
+  $('#dBody').innerHTML = '<div class="note">Loading…</div>';
+  openDrawerShell(); history.replaceState(null,'',`?job=${id}#queue`);
+  await refreshJob();
+  drawer.timer = setInterval(refreshJob, 3000);
+}
+async function refreshJob(){
+  if(drawer.kind!=='job') return;
+  try{ drawer.jobData = await api(`/api/queue/job/${drawer.job}`); }catch(e){ $('#dBody').innerHTML = `<div class="err">${esc(e.message)}</div>`; return; }
+  const j = drawer.jobData;
+  if(j.pending === 0 && drawer.timer){ clearInterval(drawer.timer); drawer.timer=null; }
+  renderJob();
+}
+function renderJob(){
+  const j = drawer.jobData; if(!j) return;
+  const [st, cc] = jobState(j);
+  $('#dTitle').innerHTML = `#${j.id} ${esc(j.name)}`;
+  $('#dSub').innerHTML = `<span class="${cc}">${st}</span> · ${j.done} done${j.cancelled?` · ${j.cancelled} cancelled`:''} of ${j.total} tasks · ${j.documents} documents · elapsed ${elapsed(j)}`;
+  if($('#dBody').children.length && !$('#jb-top')) $('#dBody').innerHTML='';
+  const top = sec('jb-top');
+  const wait = j.started_at ? j.started_at - j.created_at : null;
+  const finished = j.finished_at ? j.finished_at - j.created_at : null;
+  top.innerHTML = `
+    ${progressBar(j)}
+    <div class="note" style="margin:6px 0 10px">${j.done} done · ${j.running} running · ${j.pending - j.running} queued · ${j.failed} failed${j.cancelled?` · ${j.cancelled} cancelled`:''}${j.max_tasks?` · budget ${j.max_tasks} pages`:''}</div>
+    ${j.fetch_outcomes && j.fetch_outcomes.length ? `<div class="note" style="margin:0 0 10px"><b>Pages:</b> ${j.fetch_outcomes.map(o=>`${o.n} ${esc(o.outcome)}`).join(' · ')}</div>` : ''}
+    ${j.sites && j.sites.length ? j.sites.map(s=>`<div class="note" style="margin:0 0 10px"><b>Site ${esc(s.host)}:</b> ${esc(s.platform||'platform unknown')}${s.builder?` (${esc(s.builder)})`:''} · ${Object.keys(s.tags).length ? Object.values(s.tags).map(t=>esc(t.label)+(t.ids.length?` <span class="note">${esc(t.ids.join(', '))}</span>`:'')).join(' · ') : 'no ad pixels, analytics or tracking tags found'} · ${s.pages_scanned} page${s.pages_scanned===1?'':'s'} scanned</div>`).join('') : ''}
+    <h3>Timing</h3>
+    ${kv([['Requested', when(j.created_at)], ['First task started', when(j.started_at)], ['Queue wait', wait!=null?dur(wait):'—'],
+          ['Finished', j.finished_at? when(j.finished_at):'in progress'], ['Total time', finished!=null? dur(finished) : dur(Date.now()/1000 - j.created_at)+' so far'],
+          ['Tasks / minute', j.started_at ? Math.round(j.done / Math.max(1,( (j.finished_at||Date.now()/1000) - j.started_at))*60) : '—']])}
+    <div class="acts" style="margin-top:10px">
+      ${j.by_kind.some(k=>k.kind==='ocr_page') ? `<a href="/api/queue/job/${j.id}/text${keyQuery()}"><button class="sm" ${j.documents?'':'disabled'} title="Every page in order as one plain-text file">Download text (.txt)</button></a>` : ''}
+      <a href="/api/queue/job/${j.id}/export${keyQuery()}"><button class="ghost sm" ${j.documents?'':'disabled'}>Download Markdown (.zip)</button></a>
+      <button class="ghost sm" id="jbRetry" ${j.failed||j.cancelled?'':'disabled'}>Retry failed</button>
+      <button class="sm danger" id="jbCancel" ${j.pending?'':'disabled'}>Cancel pending</button>
+    </div>
+    ${j.cancelled && !j.pending ? `<div class="note" style="margin-top:8px">Cancelled tasks stay listed so the request is auditable; any that were mid-flight finish on their worker but their results are discarded. Retry re-queues them.</div>` : ''}`;
+  $('#jbRetry').onclick = async () => { await api(`/api/queue/job/${j.id}/retry`, {}); refreshJob(); if(!drawer.timer) drawer.timer=setInterval(refreshJob,3000); };
+  $('#jbCancel').onclick = async () => { await api(`/api/queue/job/${j.id}/cancel`, {}); refreshJob(); };
+
+  const kinds = sec('jb-kinds');
+  kinds.innerHTML = `<h3>Progress by stage</h3><table><thead><tr><th>Stage</th><th>Progress</th><th class="r">Done</th><th class="r">Running</th><th class="r">Queued</th><th class="r">Failed</th><th class="r">Avg</th><th class="r">Median</th><th class="r">Max</th></tr></thead><tbody>${
+    j.by_kind.map(k=>`<tr><td>${esc(k.kind)}</td><td>${progressBar({total:k.total, done:k.done, running:k.running, failed:k.failed, cancelled:k.cancelled})}</td><td class="r">${k.done}/${k.total}${k.cancelled?` <span class="note">(${k.cancelled} cancelled)</span>`:''}</td><td class="r">${k.running||''}</td><td class="r">${k.ready||''}</td><td class="r">${k.failed||''}</td>
+      <td class="r">${k.avg_seconds!=null?k.avg_seconds+'s':'—'}</td><td class="r">${k.p50_seconds!=null?k.p50_seconds+'s':'—'}</td><td class="r">${k.max_seconds!=null?k.max_seconds+'s':'—'}</td></tr>`).join('')}</tbody></table>`;
+
+  const byW = {}; j.by_worker.forEach(r => { const w = byW[r.worker] ||= {n:0, busy:0, kinds:{}}; w.n += r.n; w.busy += r.busy_seconds||0; w.kinds[r.kind] = r.n; });
+  const maxN = Math.max(1, ...Object.values(byW).map(w=>w.n));
+  const ws = sec('jb-workers');
+  ws.innerHTML = `<h3>Work by machine</h3>` + (Object.keys(byW).length ? `<table><thead><tr><th>Worker</th><th class="r">Tasks</th><th>By stage</th><th class="r">Busy time</th></tr></thead><tbody>${
+    Object.entries(byW).sort((a,b)=>b[1].n-a[1].n).map(([w,v])=>`<tr><td class="n">${esc(w)}<div class="mini"><i style="width:${pct(v.n,maxN)}%"></i></div></td><td class="r">${v.n}</td><td class="note">${Object.entries(v.kinds).map(([k,n])=>`${k} ${n}`).join(' · ')}</td><td class="r">${dur(v.busy)}</td></tr>`).join('')}</tbody></table>` : `<div class="note">Nothing completed yet.</div>`);
+
+  const tt = sec('jb-tasks');
+  const tabs = `<div class="tabs">
+    <button class="ghost sm ${drawer.taskTab==='errors'?'on':''}" data-tt="errors">Errors (${j.errors.length})</button>
+    <button class="ghost sm ${drawer.taskTab==='running'?'on':''}" data-tt="running">Running (${j.running_tasks.length})</button>
+    <button class="ghost sm ${drawer.taskTab==='docs'?'on':''}" data-tt="docs">Documents (${j.documents})</button></div>`;
+  let body = '';
+  if(drawer.taskTab==='errors'){
+    body = j.errors.length ? `<table><thead><tr><th class="r">#</th><th>Stage</th><th>State</th><th>URL</th><th>Error</th></tr></thead><tbody>${j.errors.map(t=>`<tr><td class="r">${t.id}</td><td>${esc(t.kind)}</td><td>${esc(t.status)} ×${t.attempts}</td><td class="n" title="${esc(t.url)}">${esc(t.url||'')}</td><td class="n" title="${esc(t.error)}">${esc(t.error||'')}</td></tr>`).join('')}</tbody></table>` : `<div class="note">No errors.</div>`;
+  } else if(drawer.taskTab==='running'){
+    body = j.running_tasks.length ? `<table><thead><tr><th class="r">#</th><th>Stage</th><th>Worker</th><th>URL</th><th class="r">For</th></tr></thead><tbody>${j.running_tasks.map(t=>`<tr><td class="r">${t.id}</td><td>${esc(t.kind)}</td><td>${esc(t.claimed_by)}</td><td class="n" title="${esc(t.url)}">${esc(t.url||'')}</td><td class="r">${dur(t.running_seconds)}</td></tr>`).join('')}</tbody></table>` : `<div class="note">Nothing running right now.</div>`;
+  } else {
+    body = drawer.docs ? (drawer.docs.length ? `<div class="tablewrap"><table><thead><tr><th>Title</th><th>URL</th><th class="r">Words</th><th class="r">Last changed</th><th class="r">Changes</th></tr></thead><tbody>${drawer.docs.map(d=>`<tr class="click" data-doc="${esc(d.url)}"><td class="n" title="${esc(d.title)}">${esc(d.title||'(untitled)')}</td><td class="n" title="${esc(d.url)}">${esc(d.url)}</td><td class="r">${d.word_count}</td><td class="r" title="first seen ${when(d.first_seen)} · last checked ${when(d.fetched_at)}">${d.changed_at?ago(d.changed_at):'—'}</td><td class="r">${d.change_count ?? ''}</td></tr>`).join('')}</tbody></table></div>` : `<div class="note">No documents yet.</div>`) : `<div class="note">Loading…</div>`;
+    if(!drawer.docs) api(`/api/queue/job/${j.id}/documents`).then(r => { drawer.docs = r.documents; if(drawer.kind==='job') renderJob(); });
+    if(drawer.docOpen) body += `<div style="margin-top:10px"><div class="tabs"><b>${esc(drawer.docOpen.title||drawer.docOpen.url)}</b><span class="sp"></span><small>${drawer.docOpen.word_count} words</small><button class="ghost sm" id="docClose">Close</button></div><pre>${esc(drawer.docOpen.markdown)}</pre></div>`;
+  }
+  tt.innerHTML = `<h3>Details</h3>${tabs}${body}`;
+  tt.querySelectorAll('[data-tt]').forEach(b => b.onclick = () => { drawer.taskTab = b.dataset.tt; renderJob(); });
+  tt.querySelectorAll('tr[data-doc]').forEach(r => r.onclick = async () => { drawer.docOpen = await api(`/api/queue/document?url=${encodeURIComponent(r.dataset.doc)}`); renderJob(); });
+  const dc = $('#docClose'); if(dc) dc.onclick = () => { drawer.docOpen=null; renderJob(); };
+}
+
+/* ---------- boot ---------- */
+showView(view);
+load().then(() => {
+  const qs = new URLSearchParams(location.search);
+  const h = qs.get('host'); if(h && byAlias(h)) openHost(h);
+  const jb = qs.get('job'); if(jb){ showView('queue'); openJob(+jb); }
+});
+setInterval(load, 5000);
+</script>
+</body>
+</html>

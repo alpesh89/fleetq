@@ -1,0 +1,5 @@
+# Which handler kinds each host installs. One line per ssh alias from inventory.txt.
+# Copy to deploy/roles.txt. Hosts not listed get every handler. Keep `render` (headless Chromium)
+# to hosts where sudo is passwordless, because the Linux browser setup installs system libraries.
+mini1   fetch,parse,sitemap,ocr_split,ocr_page
+box2    fetch,parse,sitemap,render

@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- macOS worker. Install:
+       sed "s|__USER__|$USER|g" deploy/fleetq.agent.plist > ~/Library/LaunchAgents/fleetq.worker.plist
+       launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/fleetq.worker.plist
+     Stop:  launchctl bootout gui/$(id -u)/fleetq.worker
+     For a truly headless mini (runs before login) put it in /Library/LaunchDaemons instead and use `launchctl bootstrap system`. -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>fleetq.worker</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/__USER__/fleetq/.venv/bin/fleetq</string>
+    <string>worker</string>
+    <string>--id</string><string>__HOSTNAME__</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <!-- FLEETQ_DSN is not set here: fleetq/config.py reads FLEETQ_COORDINATOR from ~/fleetq/.env (installer-written, no sudo to change) -->
+  </dict>
+  <key>WorkingDirectory</key><string>/Users/__USER__/fleetq</string>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>10</integer>
+  <key>StandardOutPath</key><string>/Users/__USER__/Library/Logs/fleetq.log</string>
+  <key>StandardErrorPath</key><string>/Users/__USER__/Library/Logs/fleetq.log</string>
+</dict>
+</plist>

@@ -1,0 +1,23 @@
+# Coordinator database. For development run it on your machine; for a fleet run it on one always-on
+# box and point every worker at that box's address (FLEETQ_COORDINATOR).
+services:
+  fleetq-db:
+    image: postgres:16-alpine
+    container_name: fleetq_db
+    environment:
+      POSTGRES_USER: ${FLEETQ_DB_USER:-fleetq}
+      POSTGRES_PASSWORD: ${FLEETQ_DB_PASSWORD:-fleetq}
+      POSTGRES_DB: ${FLEETQ_DB_NAME:-fleetq}
+    ports:
+      - "${FLEETQ_DB_PORT:-5433}:5432"
+    volumes:
+      - fleetq_pgdata:/var/lib/postgresql/data
+    command: ["postgres", "-c", "max_connections=200"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${FLEETQ_DB_USER:-fleetq}"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+volumes:
+  fleetq_pgdata:

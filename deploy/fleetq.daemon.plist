@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- macOS worker as a system LaunchDaemon (runs before login, exempt from Local Network privacy prompts).
+     Installed by deploy/install_worker.sh when sudo is available; otherwise run on the mini:
+       sudo cp ~/fleetq/deploy/rendered/daemon.plist /Library/LaunchDaemons/fleetq.worker.plist
+       sudo launchctl bootstrap system /Library/LaunchDaemons/fleetq.worker.plist
+     Stop:  sudo launchctl bootout system/fleetq.worker -->
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key><string>fleetq.worker</string>
+  <key>UserName</key><string>__USER__</string>
+  <key>GroupName</key><string>staff</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/bash</string>
+    <string>/Users/__USER__/fleetq/deploy/run_worker.sh</string>
+  </array>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <!-- FLEETQ_DSN is not set here: fleetq/config.py reads FLEETQ_COORDINATOR from ~/fleetq/.env (installer-written, no sudo to change) -->
+    <key>FLEETQ_WORKER_ID</key><string>__HOSTNAME__</string>
+    <key>HOME</key><string>/Users/__USER__</string>
+    <key>PATH</key><string>/Users/__USER__/.local/bin:/usr/local/bin:/opt/homebrew/bin:/usr/bin:/bin</string>
+  </dict>
+  <key>WorkingDirectory</key><string>/Users/__USER__/fleetq</string>
+  <key>RunAtLoad</key><true/>
+  <key>KeepAlive</key><true/>
+  <key>ThrottleInterval</key><integer>10</integer>
+  <key>StandardOutPath</key><string>/Users/__USER__/Library/Logs/fleetq.log</string>
+  <key>StandardErrorPath</key><string>/Users/__USER__/Library/Logs/fleetq.log</string>
+</dict>
+</plist>

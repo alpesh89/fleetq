@@ -1,0 +1,23 @@
+# Ubuntu worker. Install:
+#   sudo cp deploy/fleetq.service /etc/systemd/system/fleetq.service
+#   sudo systemctl edit fleetq      # set User=, WorkingDirectory=
+# The coordinator address is FLEETQ_COORDINATOR in ~/fleetq/.env, which the installer rewrites on
+# every run and fleetq/config.py prefers over any FLEETQ_DSN, so an address change never needs sudo.
+#   sudo systemctl enable --now fleetq
+#   journalctl -u fleetq -f
+[Unit]
+Description=fleetq worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=__USER__
+WorkingDirectory=/home/__USER__/fleetq
+ExecStart=/bin/bash /home/__USER__/fleetq/deploy/run_worker.sh
+Restart=always
+RestartSec=5
+KillSignal=SIGTERM
+TimeoutStopSec=45
+
+[Install]
+WantedBy=multi-user.target

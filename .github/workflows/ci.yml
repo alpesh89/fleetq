@@ -1,0 +1,46 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install ruff
+      - run: ruff check .
+      - run: ruff format --check .
+
+  smoke:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: fleetq
+          POSTGRES_PASSWORD: fleetq
+          POSTGRES_DB: fleetq
+        ports: ["5433:5432"]
+        options: >-
+          --health-cmd "pg_isready -U fleetq" --health-interval 5s --health-timeout 3s --health-retries 10
+    strategy:
+      matrix:
+        python: ["3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - run: pip install -e .
+      - run: fleetq migrate
+        env:
+          FLEETQ_DSN: postgresql://fleetq:fleetq@localhost:5433/fleetq
+      - run: fleetq doctor || true
+      - run: python scripts/smoke.py
+        env:
+          FLEETQ_DSN: postgresql://fleetq:fleetq@localhost:5433/fleetq

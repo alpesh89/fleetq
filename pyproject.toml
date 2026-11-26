@@ -1,0 +1,57 @@
+[project]
+name = "fleetq"
+version = "0.1.0"
+description = "Postgres-backed task queue for a small fleet of Macs and Linux boxes: pull-based workers, plug-in task handlers, fleet-wide rate limits, adaptive concurrency, web dashboard."
+readme = "README.md"
+license = "MIT"
+license-files = ["LICENSE"]
+requires-python = ">=3.11"
+keywords = ["task-queue", "postgres", "workers", "crawler", "distributed", "ocr"]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Operating System :: MacOS",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Topic :: System :: Distributed Computing",
+]
+dependencies = [
+  "psycopg[binary,pool]>=3.2",
+  "httpx>=0.27",
+  "trafilatura>=2.0",
+  "zstandard>=0.22",
+]
+
+[project.optional-dependencies]
+render = ["playwright>=1.47"]
+ocr = ["pymupdf>=1.24", "pyobjc-framework-Vision>=10; sys_platform == 'darwin'"]
+dev = ["ruff>=0.6"]
+
+[project.urls]
+Homepage = "https://github.com/alpesh89/fleetq"
+Issues = "https://github.com/alpesh89/fleetq/issues"
+Changelog = "https://github.com/alpesh89/fleetq/blob/main/CHANGELOG.md"
+
+[project.scripts]
+fleetq = "fleetq.cli:main"
+
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+include = ["fleetq*"]
+
+[tool.setuptools.package-data]
+fleetq = ["schema.sql", "listing_domains.txt", "dashboard/static/*", "dashboard/collector.sh"]
+
+[tool.ruff]
+line-length = 130
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP"]
+ignore = ["E501", "E702", "E701", "B904", "UP035"]
